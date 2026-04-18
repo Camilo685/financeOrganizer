@@ -1,67 +1,194 @@
 const searchBut = document.getElementById("searchBut");
 const newBut = document.getElementById("newBut");
 const editBut = document.getElementById("editBut");
-const actionBut = document.querySelector(".actionBut");
-const minCon = document.querySelector(".min-container");
-const minInput = document.getElementById("min-search");
-const maxCon = document.querySelector(".max-container");
-const maxInput = document.getElementById("max-search");
-const fromDateCon = document.querySelector(".date-from-container");
-const fromDate = fromDateCon.querySelector("#date-from");
-const toDateCon = document.querySelector(".date-to-container");
-const toDate = toDateCon.querySelector("#date-to");
-const table = document.querySelector(".dataTable");
-const selectOp = document.getElementById("acc-select");
-const titleInput = document.getElementById("title-search");
-const descInput = document.getElementById("desc-search");
 
-let dataObj = {};
+const titleInput = document.getElementById("titleInput");
+const titleTable = document.querySelector(".titleTable");
+const resetTableButtons = document.querySelectorAll(".resetTableButton");
+for (let i = 0; i < 2; i++){
+    resetTableButtons[i].addEventListener("click", () => {
+        if (i == 0){
+            let resetButArray = titleTable.querySelectorAll("button");
+            for (let j = 1; j < resetButArray.length; j++){
+                resetButArray[j].click();
+            }
+        }
+    });
+}
+
+const typeLabel = document.querySelector(".typeLabel");
+const typeSelect = document.getElementById("typeSelect");
+const typeInput = document.getElementById("typeInput");
+const typeTable = document.querySelector(".typeTable");
+
+const minInput = document.getElementById("minInput");
+const maxInput = document.getElementById("maxInput");
+
+const fromDateContainer = document.querySelector(".fromDateContainer");
+const fromDateInput = fromDateContainer.querySelector("#fromDateInput");
+const toDateContainer = document.querySelector(".toDatecontainer");
+const toDateInput = toDateContainer.querySelector("#toDateInput");
+
+const descriptionInput = document.getElementById("descriptionInput");
+
+const actionBut = document.querySelector(".actionBut");
+
+const totalSelect = document.getElementById("totalSelect");
+const incomeDisplay = document.getElementById("incomeDisplay");
+const expensesDisplay = document.getElementById("expensesDisplay");
+const totalDisplay = document.getElementById("totalDisplay");
+
+const entriesTable = document.querySelector(".entriesTable").querySelector("tbody");
+
+let arrayData = [];
+let titleOptions = new Set();
+let total = {};
+let titleRadioArray = [[], []];
+let typeRadioArray = [[], []];
+let filtered = false;
+
+const months = ['January', 'February', 'March', 'April', 
+    'May', 'June', 'July', 'August', 'September', 
+    'October', 'November', 'December'];
+    
+let colombianPeso = new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+});
+
 //0 for search, 1 for new entry, 2 for edit
 let action = 0;
 window.onload = () => {
     searchBut.checked = true;
-
+    radioButChange();
 }
 
-function cvsToObj(rawData, sep = ";", colNames = true, numCols = 1, byCols = false, getUnique = []){
+function cvsToObj(rawData, sep = ";"){
     rawData = rawData.split("\n");
-    let rowNames;
-    if (colNames) rowNames = rawData.splice(0, 1)[0].split(sep);
-    else if (byCols){
-        rowNames = new Array(numCols);
-        for (let i = 0; i < numCols; i++) rowNames.push(i);
-    }
+    rawData.splice(0, 1)[0].split(sep);
     
     let rowCnt = 0;
-    let unique = [];
-    for (let i = 0; i < getUnique.length; i++){
-        unique.push(new Set());
-    }
     for (let row of rawData){
         if (row){
             row = row.split(sep);
-            if (byCols){
-                let colCnt = 0;
-                for (let col of rowNames){
-                    if (col in dataObj) dataObj[col].push(row[colCnt]);
-                    else dataObj[col] = [row[colCnt]];
-                    colCnt += 1;
-                }
-            }
-            else {
-                dataObj[rowCnt] = row;
-                if (getUnique.length > 0){
-                    for (let k = 0; k < unique.length; k++){
-                        unique[k].add(dataObj[rowCnt][getUnique[k]]);
-                    }
-                }
+            row = prepareData(row);
+            arrayData.push(["ID" + rowCnt, row]);
+            titleOptions.add(row[2]);
+            if (row[3] in total){
+                if (row[1] >= 0) total[row[3]][0] += row[1];
+                else total[row[3]][1] += row[1];
+            } else {
+                if (row[1] >= 0) total[row[3]] = [row[1], 0];
+                else total[row[3]] = [0, row[1]];
             }
         }
         rowCnt += 1;
     }
+    sortData();
+    let titleArrayOptions = [];
+    titleOptions.forEach((key) => titleArrayOptions.push(key));
+    titleOptions = titleArrayOptions.sort();
+    return;
+}
 
-    if (getUnique.length > 0) return unique;
-    else return;
+function sortData(toSort = arrayData, Asc = false, index = 0){
+    return toSort.sort((a, b) => (Asc)? a[1][index] - b[1][index] : b[1][index] - a[1])[index];
+}
+
+function prepareData(arry){
+    arry[0] = new Date(arry[0]);
+    arry[1] = Number(arry[1]);
+    return arry;
+}
+
+function appendToTable(toAppend = arrayData, numberOfEntries = 5, titleRB = true){
+    for (let entry of toAppend){
+        let newRow = document.createElement("tr");
+        for (let j = 0; j < numberOfEntries; j++){
+            let newEnt = document.createElement("td");
+            if (numberOfEntries == 5){
+                if (j == 0){
+                    let textDate = entry[1][j].getDate() + "/" +
+                    months[entry[1][j].getMonth()] + "/" + 
+                    entry[1][j].getFullYear();
+                    newEnt.textContent = textDate;
+                }
+                else if (j == 1) newEnt.textContent = colombianPeso.format(entry[1][j]);
+                else newEnt.textContent = entry[1][j];
+            } else {
+                let partialValue = entry + ((titleRB) ? "Title" : "Type");
+                if (j != 1) {
+                    let radioBut = document.createElement("input");
+                    let radioValue = ((j == 0) ? "include" : "exclude") + partialValue;
+                    radioBut.setAttribute("name", `radio${entry}`);
+                    radioBut.setAttribute("type", "radio");
+                    radioBut.setAttribute("id", radioValue);
+                    radioBut.setAttribute("data-value", entry);
+                    radioBut.setAttribute(
+                        "value", 
+                        radioValue
+                    );
+                    radioBut.addEventListener("click", radioClicked);
+                    newEnt.appendChild(radioBut);
+                }
+                else {
+                    let resetRB = document.createElement("button");
+                    resetRB.setAttribute("type", "button");
+                    resetRB.setAttribute("class", "resetRB");
+                    resetRB.textContent = entry;
+                    resetRB.addEventListener("click", (e) => {
+                        let includeR = document.getElementById(`include${partialValue}`);
+                        let excludeR = document.getElementById(`exclude${partialValue}`);
+
+                        includeR.checked = false;
+                        excludeR.checked = false;
+
+                        for (let x = 0; x < 2; x++){
+                            let radioIndex = ((titleRB) ? titleRadioArray[x] : typeRadioArray[x]).indexOf(entry);
+                            if (radioIndex > -1) ((titleRB) ? titleRadioArray[x] : typeRadioArray[x]).splice(radioIndex, 1);
+                            checkIfRadioTableEmpty();
+                        }
+                    });
+                    newEnt.appendChild(resetRB);
+                }
+            }
+            newRow.appendChild(newEnt);
+        }
+        if(numberOfEntries == 5) entriesTable.appendChild(newRow);
+        else if (titleRB) titleTable.appendChild(newRow);
+        else typeTable.appendChild(newRow);
+    }
+}
+
+function checkIfRadioTableEmpty(){
+    if(titleRadioArray[0].length > 0 || titleRadioArray[1].length > 0){
+        resetTableButtons[0].disabled = false;
+    } else resetTableButtons[0].disabled = true;
+    if(typeRadioArray[0].length > 0 || typeRadioArray[1].length > 0){
+        resetTableButtons[1].disabled = false;
+    } else resetTableButtons[1].disabled = true;
+}
+
+function radioClicked(e){
+    let value = e.target.value;
+    let dataValue = e.target.getAttribute("data-value");
+    let radioType = (value.includes("include")) ? 0 : 1;
+    if (value.includes("Title")){
+        let rIndex = titleRadioArray[radioType].indexOf(dataValue);
+        let rOpIndex = titleRadioArray[Number(!radioType)].indexOf(dataValue);
+        if(rIndex <= -1){
+            titleRadioArray[radioType].push(dataValue);
+            titleInput.value = "";
+        }
+        if(rOpIndex > -1) titleRadioArray[Number(!radioType)].splice(rOpIndex, 1);
+        checkIfRadioTableEmpty();
+    } else {
+        let rIndex = typeRadioArray[radioType].indexOf(dataValue);
+        let rOpIndex = typeRadioArray[Number(!radioType)].indexOf(dataValue);
+        if(rIndex <= -1) typeRadioArray[radioType].push(dataValue);
+        if(rOpIndex > -1) typeRadioArray[Number(!radioType)].splice(rOpIndex, 1);
+        checkIfRadioTableEmpty();
+    }
 }
 
 document.getElementById('file-input').addEventListener('change', function(event) {
@@ -69,40 +196,67 @@ document.getElementById('file-input').addEventListener('change', function(event)
     if (file){
         const reader = new FileReader();
         reader.onload = (e) => {
-            let uniVals = Array.from(cvsToObj(e.target.result, ";", true, 1, false, [3])[0]);
-            for (let key of uniVals){
-                let newOp = document.createElement("option");
-                newOp.value = key;
-                newOp.textContent = key;
-                selectOp.appendChild(newOp);
+            cvsToObj(e.target.result, ";", true, 1, false);
+            for (let key in total){
+                let newTypeOption = newOption(key);
+                let newTotalOption = newTypeOption.cloneNode(true);
+                typeSelect.appendChild(newTypeOption);
+                totalSelect.appendChild(newTotalOption);
             }
-            for (let i = 0; i < Object.keys(dataObj).length; i++){
-                let newRow = document.createElement("tr");
-                for (let j = 0; j < 5; j++){
-                    let newEnt = document.createElement("td");
-                    newEnt.textContent = dataObj[i][j];
-                    newRow.appendChild(newEnt);
-                }
-                table.appendChild(newRow);
-            }
+            appendToTable();
+            appendToTable(titleOptions, 3);
+            appendToTable(Object.keys(total), 3, false);
         };
         reader.readAsText(file);
     }
 });
 
-function radioButChange(
-    actText = "Search", 
-    act = 0, 
-    minLabel = "Min",
-    maxDisplay = "inline",
-    fromLabel = "From",
-    toDateDisplay = "inline"){
-        actionBut.textContent = actText;
+function newOption(textC){
+    let newSelectOp = document.createElement("option");
+    newSelectOp.value = textC;
+    newSelectOp.textContent = textC;
+    return newSelectOp;
+}
+
+function radioButChange(act = 0){
         action = act;
-        minCon.querySelector("label").textContent = minLabel;
-        maxCon.style.display = maxDisplay;
-        fromDateCon.querySelector("label").textContent = fromLabel;
-        toDateCon.style.display = toDateDisplay;
+        titleInput.value = "";
+        titleTable.style.display = (act == 0) ? "inline" : "none";
+        
+        typeLabel.style.display = (act == 0) ? "none" : "inline";
+        typeInput.style.display = (act == 0) ? "none" : "inline";
+        typeInput.value = "";
+        typeSelect.style.display = (act == 0) ? "none" : "inline";
+        typeSelect.selectedIndex = 0;
+        typeTable.style.display = (act == 0) ? "inline" : "none";
+        
+        minInput.setAttribute("placeholder", (act == 0) ? "Minimim amount..." : "Amount...");
+        minInput.value = "";
+        maxInput.style.display = (act == 0) ? "inline" : "none";
+        maxInput.value = "";
+
+        fromDateContainer.querySelector("label").textContent = (act == 0) ? "From..." : "Date";
+        fromDateInput.value = "";
+        toDateContainer.style.display = (act == 0) ? "inline" : "none";
+        toDateInput.value = "";
+        
+        descriptionInput.value = "";
+
+        actionBut.textContent = (act == 0) ? "Search" : (act == 1) ? "New entry" : "Edit";
+        
+        totalSelect.selectedIndex = 0;
+        totalDisplay.value = "";
+        incomeDisplay.value = "";
+        expensesDisplay.value = "";
+        
+        entriesTable.replaceChildren();
+        appendToTable();
+        if (filtered){
+            totalSelect.options[totalSelect.options.length - 1].remove();
+            total["Filtered results"] = [0, 0];
+        }
+        filtered = false;
+        checkIfRadioTableEmpty();
 }
 
 searchBut.addEventListener("click", () => {
@@ -110,71 +264,128 @@ searchBut.addEventListener("click", () => {
 });
 
 newBut.addEventListener("click", () => {
-    radioButChange("New", 1, "Amount", "none", "Date", "none");
+    radioButChange(1);
 });
 
 editBut.addEventListener("click", () => {
-    radioButChange("Edit", 2, "Amount", "none", "Date", "none");
+    radioButChange(2);
+});
+
+typeInput.addEventListener("input", () => {
+    if (typeInput.value) typeSelect.selectedIndex = 0;
+});
+
+typeSelect.addEventListener("click", () => {
+    if (typeSelect.value != "-") typeInput.value = "";
+});
+
+totalSelect.addEventListener("click", () => {
+    if (totalSelect.value != "-"){
+        let inc = total[totalSelect.value][0];
+        let exp = total[totalSelect.value][1];
+        incomeDisplay.value = colombianPeso.format(inc);
+        expensesDisplay.value = colombianPeso.format(exp);
+        totalDisplay.value = colombianPeso.format(inc + exp);
+    }
 });
 
 actionBut.addEventListener("click", () => {
-    let fromD = null;
-    let toD = null;
-    let minV = null;
-    let maxV = null;
-    let title = null;
-    let type = null;
-    let desc = null;
+    let title = false;
+    let type = false;
+    let minV = false;
+    let maxV = false;
+    let fDate = false;
+    let tDate = false;
+    let description = false;
+    
     if (action == 0){
-        let filterResults = {};
-        if (fromDate.value || toDate.value){
-            fromD = new Date(fromDate.value);
-            fromD = new Date(fromD.getTime() + (300 * 60000));
-            toD = new Date(toDate.value);
-            toD = new Date(toD.getTime() + (300 * 60000));
-            if (fromD && toD){
-                if (fromD > toD){
-                    alert("From date cannot be before To date");
-                    return;
-                }
-            }
+        let filterResults = [];
+        total["Filtered results"] = [0, 0];
+        
+        if (titleInput.value || titleRadioArray[0].length > 0 || titleRadioArray[1].length > 0) title = true;
+
+        if (typeSelect.value != "-") typeRadioArray[0].push(typeSelect.value);
+        if (typeRadioArray[0].length > 0 || typeRadioArray[1].length > 0) type = true;
+
+        if (minInput.value) minV = true;
+        if (maxInput.value) maxV = true;
+        if (minV && maxV){
+            if (minInput.value > maxInput.value) return alert("Minimun value cannot be lower than maximum value");
         }
-        if (minInput.value || maxInput.value){
-            minV = Number(minInput.value);
-            maxV = Number(maxInput.value);
-            if (minV && toD){
-                if (minV > maxV){
-                    alert("Minimun value cannot be lower than maximum value");
-                    return;
-                }
-            }
+
+        if (fromDateInput.value) fDate = true;
+        if (toDateInput.value) tDate = true;
+        if (fDate && tDate){
+            if (fromDateInput.value > toDateInput.value) return alert("From date cannot be before To date");
         }
-        if (titleInput.value) title = titleInput.value;
-        if (descInput.value) desc = descInput.value;
-        if (selectOp.value != "-") type = selectOp.value;
-        let filteredCnt = 0;
-        for (let key in dataObj){
-            let tempDate = new Date(dataObj[key][0]);
-            if (fromD || toD){
-                if (fromD) if (tempDate < fromD) continue;
-                if (toD) if (tempDate > toD) continue;
-            }
-            if (minV || maxV){
-                if (minV) if(Number(dataObj[key][1]) < minV) continue;
-                if (maxV) if(Number(dataObj[key][1]) > maxV) continue;
-            }
+
+        if (descriptionInput.value) description = true;
+        
+        entryLoop : for (let entry of arrayData){
+            let entryData = entry[1];
             if (title){
-                if(!dataObj[key][2].toLowerCase().includes(title.toLowerCase())) continue;
+                for (let i = 0; i < 2; i++){
+                    for (let keyString of titleRadioArray[i]){
+                        if (i == 0){
+                            if (!entryData[2].toLowerCase().includes(keyString.toLowerCase())) continue entryLoop;
+                        }
+                        else {
+                            if (entryData[2].toLowerCase().includes(keyString.toLowerCase())) continue entryLoop;
+                        }
+                    }
+                }
             }
             if (type){
-                if(type != dataObj[key][3]) continue;
+                for (let i = 0; i < 2; i++){
+                    for (let keyString of typeRadioArray[i]){
+                        if (i == 0){
+                            if (!entryData[3].toLowerCase().includes(keyString.toLowerCase())) continue entryLoop;
+                        }
+                        else {
+                            if (entryData[3].toLowerCase().includes(keyString.toLowerCase())) continue entryLoop;
+                        }
+                    }
+                }
             }
-            if (desc){
-                if(!dataObj[key][4].toLowerCase().includes(desc.toLowerCase())) continue;
+            if (minV || maxV){
+                if (minV){
+                    if(entryData[1] < Number(minInput.value)) continue entryLoop;
+                }
+                if (maxV){
+                    if(entryData[1] > Number(maxInput.value)) continue entryLoop;
+                }
             }
-            filterResults[filteredCnt] = dataObj[key];
-            filteredCnt += 1;
+            if (fDate || tDate){
+                if (fDate){
+                    let tmpDate = new Date(fromDateInput.value);
+                    tmpDate = new Date(tmpDate.getTime() + (300 * 60000));
+                    if (entryData[0] < tmpDate) continue entryLoop;
+                } 
+                if (tDate){
+                    let tmpDate = new Date(toDateInput.value);
+                    tmpDate = new Date(tmpDate.getTime() + (300 * 60000));
+                    if (entryData[0] < tmpDate) continue entryLoop;
+                } 
+            }
+            if (description){
+                if(!entryData[4].toLowerCase().includes(description.toLowerCase())) continue entryLoop;
+            }
+            
+
+            filterResults.push(entry);
+            (entryData[1] < 0)? total["Filtered results"][1] += entryData[1] : total["Filtered results"][0] += entryData[1];
         }
-        console.log(filterResults);
+        entriesTable.replaceChildren();
+        if (Object.keys(filterResults).length > 0){
+            sortData(filterResults);
+            appendToTable(filterResults);
+            if (!filtered){
+                let newOp = newOption("Filtered results");
+                totalSelect.appendChild(newOp);
+                filtered = true;
+            }
+            totalSelect.selectedIndex = totalSelect.options.length - 1;
+            totalSelect.click();
+        }
     }
 });

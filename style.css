@@ -52,6 +52,19 @@ body, .container, .header, .footer {
     background-color: lightcyan;
 }
 
+.total-container {
+    display: flex;
+    flex-direction: column;
+}
+
 h1, h2 {
     text-align: center;
+}
+
+table, th, td {
+    border: 1px solid black;
+    border-collapse: collapse;
+    background-color: white;
+    overflow-wrap: anywhere;
+    overflow-y: auto;
 }
