@@ -1,33 +1,67 @@
-const searchBut = document.getElementById("searchBut");
-const newBut = document.getElementById("newBut");
-const editBut = document.getElementById("editBut");
+const radioModeButtons = document.querySelector(".radioModesDiv").querySelectorAll("input");
+for (let i = 0; i < 3; i++){
+    radioModeButtons[i].addEventListener("click", () => {radioButChange(i)});
 
-const titleInput = document.getElementById("titleInput");
-const titleTable = document.querySelector(".titleTable");
-const resetTableButtons = document.querySelectorAll(".resetTableButton");
-for (let i = 0; i < 2; i++){
-    resetTableButtons[i].addEventListener("click", () => {
-        if (i == 0){
-            let resetButArray = titleTable.querySelectorAll("button");
-            for (let j = 1; j < resetButArray.length; j++){
-                resetButArray[j].click();
-            }
-        }
-    });
 }
 
-const typeLabel = document.querySelector(".typeLabel");
+const titleSelect = document.getElementById("titleSelect");
+const titleInput = document.getElementById("titleInput");
+const titleTable = document.querySelector(".titleTable");
+
+titleInput.addEventListener("input", () => {
+    if (titleInput.value){
+        titleSelect.selectedIndex = 0;
+        clearRadioButtons();
+    }
+});
+
+titleSelect.addEventListener("click", () => {
+    if (titleSelect.value != "-"){
+        titleInput.value = "";
+        clearRadioButtons();
+    }
+});
+
 const typeSelect = document.getElementById("typeSelect");
 const typeInput = document.getElementById("typeInput");
 const typeTable = document.querySelector(".typeTable");
 
+typeInput.addEventListener("input", () => {
+    if (typeInput.value){
+        typeSelect.selectedIndex = 0;
+        clearRadioButtons(1);
+    }
+});
+
+typeSelect.addEventListener("click", () => {
+    if (typeSelect.value != "-"){
+        typeInput.value = "";
+        clearRadioButtons(1);
+    }
+});
+
+const resetTableButtons = document.querySelectorAll(".resetTableButton");
+for (let i = 0; i < 2; i++){
+    resetTableButtons[i].addEventListener("click", () => {clearRadioButtons(i)});
+}
+
 const minInput = document.getElementById("minInput");
 const maxInput = document.getElementById("maxInput");
 
-const fromDateContainer = document.querySelector(".fromDateContainer");
-const fromDateInput = fromDateContainer.querySelector("#fromDateInput");
-const toDateContainer = document.querySelector(".toDatecontainer");
-const toDateInput = toDateContainer.querySelector("#toDateInput");
+const fromDateLabel = document.querySelector(".fromDateLabel");
+const fromDateInputText = document.querySelector("#fromDateInputText");
+const fromDateInput = document.querySelector("#fromDateInput");
+const toDateLabel = document.querySelector(".toDateLabel");
+const toDateInputText = document.querySelector("#toDateInputText");
+const toDateInput = document.querySelector("#toDateInput");
+
+const datePickers = document.querySelectorAll(".datePicker");
+const dateTextInputs = document.querySelectorAll(".dateTextInput");
+
+for (let i = 0; i < 2; i++){
+    dateTextInputs[i].addEventListener("click", (e) => {datePickers[i].showPicker()});
+    datePickers[i].addEventListener("input", (e) => {dateTextInputs[i].value = e.target.value.toString()})
+}
 
 const descriptionInput = document.getElementById("descriptionInput");
 
@@ -38,14 +72,95 @@ const incomeDisplay = document.getElementById("incomeDisplay");
 const expensesDisplay = document.getElementById("expensesDisplay");
 const totalDisplay = document.getElementById("totalDisplay");
 
-const entriesTable = document.querySelector(".entriesTable").querySelector("tbody");
+const showInSearch = document.querySelectorAll(".showInSearch");
+const hideInSearch = document.querySelectorAll(".hideInSearch");
 
-let arrayData = [];
-let titleOptions = new Set();
-let total = {};
-let titleRadioArray = [[], []];
-let typeRadioArray = [[], []];
-let filtered = false;
+const entriesTable = document.querySelector(".entriesTable").querySelector("tbody");
+const resetEntryTableCB = document.querySelector(".resetCB");
+resetEntryTableCB.addEventListener("click", (e) => {
+    let allCB = document.querySelectorAll(".entryCheckbox");
+    for (let cb of allCB) cb.checked = false;
+    currentSession.data.dataSelected = [];
+    e.target.disabled = true;
+    checkFillConditions();
+});
+
+function sessionData(){
+    this.data = {
+        "full" : [],
+        "dataSelected" : [],
+        "titleOptions" : [],
+        "titleRadioSelected" : [[], []],
+        "typeOptions" : [],
+        "typeRadioSelected" : [[], []],
+        "total" : {},
+        "filterResults" : {
+            "filter" : false,
+            "results" : []
+        }
+    }
+
+    this.action = 0;
+
+    this.newOption = (type = 0, option) => {
+        let opType = (type == 0) ? "titleOptions" : "typeOptions";
+        if (!this.data[opType].includes(option)){
+            this.data[opType].push(option);
+
+            let newOption = newOptionElement(option);
+            let tableType = (type == 0) ? "title" : "type";
+            
+            if (type == 0){
+                titleSelect.appendChild(newOption);
+            } else {
+                let cloneOption = newOption.cloneNode(true);
+                typeSelect.appendChild(newOption);
+                totalSelect.appendChild(cloneOption);
+            } 
+            appendToTable([option], tableType);
+        }
+    }
+
+    this.addTotal = (key, amount, edit = false) => {
+        let vType = (amount >= 0) ? "Income" : "Expense";
+        if (key in this.data.total){
+            if(edit) this.data.total[key][vType] -= amount;
+            else this.data.total[key][vType] += amount;
+        }
+        else {
+            this.data.total[key] = {
+                "Income" : (vType == "Income") ? amount : 0, 
+                "Expense" : (vType == "Income") ? 0 : amount
+            };
+        }
+    }
+
+    this.loadCVSData = (rawData, separator = ";") => {
+        rawData = rawData.split("\n");
+        rawData.splice(0, 1)[0].split(separator);
+
+        let prepareData = (arr) => {
+            arr[0] = new Date(arr[0]);
+            arr[1] = Number(arr[1]);
+            return arr;
+        };
+        
+        rawData.forEach((row, cnt) => {
+            if (row){
+                row = row.split(separator);
+                row = prepareData(row);
+                this.data["full"].push(["ID" + cnt, row]);
+                this.newOption(0, row[2]);
+                this.newOption(1, row[3]);
+                this.addTotal(row[3], row[1]);
+            }
+        });
+        sortData();
+        appendToTable();
+    }
+}
+
+let currentSession = null;
 
 const months = ['January', 'February', 'March', 'April', 
     'May', 'June', 'July', 'August', 'September', 
@@ -56,139 +171,206 @@ let colombianPeso = new Intl.NumberFormat('es-CO', {
     currency: 'COP',
 });
 
-//0 for search, 1 for new entry, 2 for edit
-let action = 0;
+let sortData = (toSort = currentSession.data.full, asc = false, index = 0) => {
+    return toSort.sort((a, b) => (asc)? a[1][index] - b[1][index] : b[1][index] - a[1][index]);
+};
+
+let newOptionElement = (option) => {
+    let newOption = document.createElement("option");
+    newOption.value = option;
+    newOption.textContent = option;
+    return newOption;
+};
+
 window.onload = () => {
-    searchBut.checked = true;
+    currentSession = new sessionData();
+    radioModeButtons[0].checked = true;
     radioButChange();
 }
 
-function cvsToObj(rawData, sep = ";"){
-    rawData = rawData.split("\n");
-    rawData.splice(0, 1)[0].split(sep);
+function clearRadioButtons(tableNumber = 0){
+    let resetButArray = (tableNumber == 0) ? titleTable.querySelectorAll("button") : typeTable.querySelectorAll("button");
+    for (let j = 1; j < resetButArray.length; j++) resetButArray[j].click();
+}
+
+function checkFillConditions(){
+    if (currentSession.data.dataSelected.length == 1){
+        if (currentSession.action != 0){
+            let tmpData = currentSession.data.full[currentSession.data.dataSelected[0]][1];
+            fillDataForm(
+                tmpData[2], 
+                0, 
+                tmpData[3], 
+                0, 
+                tmpData[1], 
+                tmpData[0], 
+                tmpData[4]
+            );
+        } else fillDataForm();
+    } else fillDataForm();
+}
+
+function appendToTable(toAppend = currentSession.data["full"], table = "entry"){
+    let dateToTextDate = (date) => {
+        return date.getDate() + "/" + months[date.getMonth()] + "/" + date.getFullYear();
+    };
     
-    let rowCnt = 0;
-    for (let row of rawData){
-        if (row){
-            row = row.split(sep);
-            row = prepareData(row);
-            arrayData.push(["ID" + rowCnt, row]);
-            titleOptions.add(row[2]);
-            if (row[3] in total){
-                if (row[1] >= 0) total[row[3]][0] += row[1];
-                else total[row[3]][1] += row[1];
-            } else {
-                if (row[1] >= 0) total[row[3]] = [row[1], 0];
-                else total[row[3]] = [0, row[1]];
-            }
-        }
-        rowCnt += 1;
-    }
-    sortData();
-    let titleArrayOptions = [];
-    titleOptions.forEach((key) => titleArrayOptions.push(key));
-    titleOptions = titleArrayOptions.sort();
-    return;
-}
-
-function sortData(toSort = arrayData, Asc = false, index = 0){
-    return toSort.sort((a, b) => (Asc)? a[1][index] - b[1][index] : b[1][index] - a[1])[index];
-}
-
-function prepareData(arry){
-    arry[0] = new Date(arry[0]);
-    arry[1] = Number(arry[1]);
-    return arry;
-}
-
-function appendToTable(toAppend = arrayData, numberOfEntries = 5, titleRB = true){
-    for (let entry of toAppend){
+    toAppend.forEach((entry, cnt) => {
         let newRow = document.createElement("tr");
-        for (let j = 0; j < numberOfEntries; j++){
-            let newEnt = document.createElement("td");
-            if (numberOfEntries == 5){
-                if (j == 0){
-                    let textDate = entry[1][j].getDate() + "/" +
-                    months[entry[1][j].getMonth()] + "/" + 
-                    entry[1][j].getFullYear();
-                    newEnt.textContent = textDate;
+        if (table == "entry"){
+            let checkB = document.createElement("input");
+            checkB.setAttribute("value", (entry.length == 3) ? entry[2] : cnt);
+            checkB.setAttribute("type", "checkbox");
+            checkB.setAttribute("class", "entryCheckbox");
+            checkB.addEventListener("change", (e) => {
+                let currentIndex = currentSession.data.dataSelected.indexOf(e.target.value);
+                let displayData = currentSession.data.full[e.target.value][1];
+
+                if (e.target.checked){
+                    if(currentIndex <= -1){
+                        currentSession.data.dataSelected.push(e.target.value);
+                        currentSession.addTotal("Checked data", displayData[1]);
+                        checkFillConditions();
+                    }
+                } else if (currentIndex > -1){
+                    currentSession.data.dataSelected.splice(currentIndex, 1);
+                    currentSession.addTotal("Checked data", displayData[1], true);
+                    checkFillConditions();
                 }
-                else if (j == 1) newEnt.textContent = colombianPeso.format(entry[1][j]);
-                else newEnt.textContent = entry[1][j];
-            } else {
-                let partialValue = entry + ((titleRB) ? "Title" : "Type");
-                if (j != 1) {
-                    let radioBut = document.createElement("input");
-                    let radioValue = ((j == 0) ? "include" : "exclude") + partialValue;
-                    radioBut.setAttribute("name", `radio${entry}`);
-                    radioBut.setAttribute("type", "radio");
-                    radioBut.setAttribute("id", radioValue);
-                    radioBut.setAttribute("data-value", entry);
-                    radioBut.setAttribute(
-                        "value", 
-                        radioValue
-                    );
-                    radioBut.addEventListener("click", radioClicked);
-                    newEnt.appendChild(radioBut);
+                let idxCnt = currentSession.data.dataSelected.length;
+                if (idxCnt > 0){
+                    resetEntryTableCB.disabled = false;
+                    if (idxCnt > 1){
+                        actionBut.textContent = "Edit all";
+                    } else actionBut.textContent = "Edit";
                 }
-                else {
-                    let resetRB = document.createElement("button");
-                    resetRB.setAttribute("type", "button");
-                    resetRB.setAttribute("class", "resetRB");
-                    resetRB.textContent = entry;
-                    resetRB.addEventListener("click", (e) => {
-                        let includeR = document.getElementById(`include${partialValue}`);
-                        let excludeR = document.getElementById(`exclude${partialValue}`);
+                else resetEntryTableCB.disabled = true;
+            });
+            
+            [
+                checkB,
+                dateToTextDate(entry[1][0]), 
+                colombianPeso.format(entry[1][1]), 
+                entry[1][2],
+                entry[1][3],
+                entry[1][4]
+            ].forEach((dt, dtCnt) => {
+                let newCol = document.createElement("td");
+                if (dtCnt != 0) newCol.textContent = dt;
+                else newCol.appendChild(dt);
+                newRow.appendChild(newCol);
+            });
+            entriesTable.appendChild(newRow);
+        } else {
+            let tableNum = (table == "title") ? "0" : "1";
+            let idTag = entry + tableNum;
+            for (let i = 0; i < 3; i++){
+                let newCol = document.createElement("td");
+                let newColData = undefined;
+                let dataType = (i == 0) ? "0" : "1";
+                if (i != 1){
+                    newColData = document.createElement("input");
+                    newColData.setAttribute("name", `radio${entry}`);
+                    newColData.setAttribute("type", "radio");
+                    newColData.setAttribute("id", `${idTag + dataType}`);
+                    newColData.setAttribute("value", entry);
+                    newColData.addEventListener("click", (e) => {
+                        titleInput.value = "";
+                        let value = e.target.value;
+                        let tableType = e.target.id.charAt(e.target.id.length - 2);
+                        tableType = (
+                            (tableType == "0") ? 
+                            currentSession.data.titleRadioSelected : 
+                            currentSession.data.typeRadioSelected
+                        );
+                        let dataType = e.target.id.charAt(e.target.id.length - 1);
+                        dataType = (dataType == "0") ? 0 : 1;
+                        let oDataType = (dataType == 0) ? 1 : 0;
+                        let valueIndex = tableType[dataType].indexOf(value);
+                        let oValueIndex = tableType[oDataType].indexOf(value);
+                        if(valueIndex <= -1) tableType[dataType].push(value);
+                        if(oValueIndex > -1) tableType[oDataType].splice(oValueIndex, 1);
+                        
+                        checkIfRadioTableEmpty();
+                        newRow.querySelector("button").disabled = false;
+                    });
+                } else {
+                    newColData = document.createElement("button");
+                    newColData.setAttribute("type", "button");
+                    newColData.setAttribute("class", "resetRB");
+                    newColData.disabled = true;
+                    newColData.textContent = entry;
+                    newColData.addEventListener("click", (e) => {
+                        let includeR = document.getElementById(`${idTag + "0"}`);
+                        let excludeR = document.getElementById(`${idTag + "1"}`);
 
                         includeR.checked = false;
                         excludeR.checked = false;
 
                         for (let x = 0; x < 2; x++){
-                            let radioIndex = ((titleRB) ? titleRadioArray[x] : typeRadioArray[x]).indexOf(entry);
-                            if (radioIndex > -1) ((titleRB) ? titleRadioArray[x] : typeRadioArray[x]).splice(radioIndex, 1);
-                            checkIfRadioTableEmpty();
+                            let usedArray = (
+                                (tableNum == 0) ? 
+                                currentSession.data.titleRadioSelected[x] : 
+                                currentSession.data.typeRadioSelected[x]
+                            );
+                            let radioIndex = usedArray.indexOf(entry);
+                            if (radioIndex > -1){
+                                usedArray.splice(radioIndex, 1);
+                                checkIfRadioTableEmpty();
+                            }
+                        newColData.disabled = true;
                         }
                     });
-                    newEnt.appendChild(resetRB);
                 }
+                newCol.appendChild(newColData);
+                newRow.appendChild(newCol);
             }
-            newRow.appendChild(newEnt);
+            if (table == "title") titleTable.appendChild(newRow);
+            else typeTable.appendChild(newRow);
         }
-        if(numberOfEntries == 5) entriesTable.appendChild(newRow);
-        else if (titleRB) titleTable.appendChild(newRow);
-        else typeTable.appendChild(newRow);
-    }
+    });
+}
+
+function fillDataForm(
+    titleText = "",
+    titleSelection = 0,
+    typeText = "",
+    typeSelection = 0,
+    amountText = "",
+    dateText = "",
+    descriptionText = "",
+    totalSelection = 0
+){
+    titleInput.value = titleText;
+    titleSelect.selectedIndex = titleSelection;
+
+    typeInput.value = typeText;
+    typeSelect.selectedIndex = typeSelection;
+
+    minInput.value = amountText;
+    maxInput.value = "";
+    if (dateText instanceof Date) fromDateInput.valueAsDate = dateText;
+    else fromDateInput.value = dateText;
+    fromDateInput.dispatchEvent(new Event("input"));
+    
+    toDateInput.value = "";
+    toDateInput.dispatchEvent(new Event("input"));
+
+    descriptionInput.value = descriptionText;
+
+    totalSelect.selectedIndex = totalSelection;
+    totalSelect.click();
 }
 
 function checkIfRadioTableEmpty(){
-    if(titleRadioArray[0].length > 0 || titleRadioArray[1].length > 0){
+    if(currentSession.data.titleRadioSelected[0].length > 0 || currentSession.data.titleRadioSelected[1].length > 0){
         resetTableButtons[0].disabled = false;
     } else resetTableButtons[0].disabled = true;
-    if(typeRadioArray[0].length > 0 || typeRadioArray[1].length > 0){
+    if(currentSession.data.typeRadioSelected[0].length > 0 || currentSession.data.typeRadioSelected[1].length > 0){
         resetTableButtons[1].disabled = false;
     } else resetTableButtons[1].disabled = true;
-}
-
-function radioClicked(e){
-    let value = e.target.value;
-    let dataValue = e.target.getAttribute("data-value");
-    let radioType = (value.includes("include")) ? 0 : 1;
-    if (value.includes("Title")){
-        let rIndex = titleRadioArray[radioType].indexOf(dataValue);
-        let rOpIndex = titleRadioArray[Number(!radioType)].indexOf(dataValue);
-        if(rIndex <= -1){
-            titleRadioArray[radioType].push(dataValue);
-            titleInput.value = "";
-        }
-        if(rOpIndex > -1) titleRadioArray[Number(!radioType)].splice(rOpIndex, 1);
-        checkIfRadioTableEmpty();
-    } else {
-        let rIndex = typeRadioArray[radioType].indexOf(dataValue);
-        let rOpIndex = typeRadioArray[Number(!radioType)].indexOf(dataValue);
-        if(rIndex <= -1) typeRadioArray[radioType].push(dataValue);
-        if(rOpIndex > -1) typeRadioArray[Number(!radioType)].splice(rOpIndex, 1);
-        checkIfRadioTableEmpty();
-    }
+    if (currentSession.data.dataSelected.length > 0) resetEntryTableCB.disabled = false;
+    else resetEntryTableCB.disabled = true;
 }
 
 document.getElementById('file-input').addEventListener('change', function(event) {
@@ -196,96 +378,42 @@ document.getElementById('file-input').addEventListener('change', function(event)
     if (file){
         const reader = new FileReader();
         reader.onload = (e) => {
-            cvsToObj(e.target.result, ";", true, 1, false);
-            for (let key in total){
-                let newTypeOption = newOption(key);
-                let newTotalOption = newTypeOption.cloneNode(true);
-                typeSelect.appendChild(newTypeOption);
-                totalSelect.appendChild(newTotalOption);
-            }
-            appendToTable();
-            appendToTable(titleOptions, 3);
-            appendToTable(Object.keys(total), 3, false);
+            currentSession.loadCVSData(e.target.result);
         };
         reader.readAsText(file);
     }
 });
 
-function newOption(textC){
-    let newSelectOp = document.createElement("option");
-    newSelectOp.value = textC;
-    newSelectOp.textContent = textC;
-    return newSelectOp;
-}
-
 function radioButChange(act = 0){
-        action = act;
-        titleInput.value = "";
-        titleTable.style.display = (act == 0) ? "inline" : "none";
-        
-        typeLabel.style.display = (act == 0) ? "none" : "inline";
-        typeInput.style.display = (act == 0) ? "none" : "inline";
-        typeInput.value = "";
-        typeSelect.style.display = (act == 0) ? "none" : "inline";
-        typeSelect.selectedIndex = 0;
-        typeTable.style.display = (act == 0) ? "inline" : "none";
-        
-        minInput.setAttribute("placeholder", (act == 0) ? "Minimim amount..." : "Amount...");
-        minInput.value = "";
-        maxInput.style.display = (act == 0) ? "inline" : "none";
-        maxInput.value = "";
+    currentSession.action = act;
 
-        fromDateContainer.querySelector("label").textContent = (act == 0) ? "From..." : "Date";
-        fromDateInput.value = "";
-        toDateContainer.style.display = (act == 0) ? "inline" : "none";
-        toDateInput.value = "";
-        
-        descriptionInput.value = "";
+    checkFillConditions();
+    
+    minInput.setAttribute("placeholder", (act == 0) ? "Minimim amount..." : "Amount...");
 
-        actionBut.textContent = (act == 0) ? "Search" : (act == 1) ? "New entry" : "Edit";
-        
-        totalSelect.selectedIndex = 0;
-        totalDisplay.value = "";
-        incomeDisplay.value = "";
-        expensesDisplay.value = "";
-        
-        entriesTable.replaceChildren();
-        appendToTable();
-        if (filtered){
-            totalSelect.options[totalSelect.options.length - 1].remove();
-            total["Filtered results"] = [0, 0];
-        }
-        filtered = false;
-        checkIfRadioTableEmpty();
+    for (let i = 0; i < showInSearch.length; i++){
+        showInSearch[i].style.display = (act == 0) ? "" : "none";
+    }
+    for (let i = 0; i < hideInSearch.length; i ++) {
+        hideInSearch[i].style.display = (act == 0) ? "none" : "";
+    }
+
+    actionBut.textContent = (act == 0) ? "Search" : (act == 1) ? "New entry" : "Edit";
+    checkIfRadioTableEmpty();
 }
-
-searchBut.addEventListener("click", () => {
-    radioButChange();
-});
-
-newBut.addEventListener("click", () => {
-    radioButChange(1);
-});
-
-editBut.addEventListener("click", () => {
-    radioButChange(2);
-});
-
-typeInput.addEventListener("input", () => {
-    if (typeInput.value) typeSelect.selectedIndex = 0;
-});
-
-typeSelect.addEventListener("click", () => {
-    if (typeSelect.value != "-") typeInput.value = "";
-});
 
 totalSelect.addEventListener("click", () => {
     if (totalSelect.value != "-"){
-        let inc = total[totalSelect.value][0];
-        let exp = total[totalSelect.value][1];
+        let inc = currentSession.data.total[totalSelect.value].Income;
+        let exp = currentSession.data.total[totalSelect.value].Expense;
         incomeDisplay.value = colombianPeso.format(inc);
         expensesDisplay.value = colombianPeso.format(exp);
         totalDisplay.value = colombianPeso.format(inc + exp);
+    }
+    else {
+        totalDisplay.value = "";
+        incomeDisplay.value = "";
+        expensesDisplay.value = "";
     }
 });
 
@@ -297,95 +425,156 @@ actionBut.addEventListener("click", () => {
     let fDate = false;
     let tDate = false;
     let description = false;
+
+    let dateTimezoneCorrection = (oldDate) => {
+        let newDate = new Date(oldDate);
+        return new Date(newDate.getTime() + (300 * 60000));
+    };
     
-    if (action == 0){
-        let filterResults = [];
-        total["Filtered results"] = [0, 0];
-        
-        if (titleInput.value || titleRadioArray[0].length > 0 || titleRadioArray[1].length > 0) title = true;
+    if (currentSession.action == 0){
+        currentSession.data.filterResults.results = [];
+        currentSession.data.total["Filtered results"] = {
+            "Income" : 0, 
+            "Expense" : 0
+        };
 
-        if (typeSelect.value != "-") typeRadioArray[0].push(typeSelect.value);
-        if (typeRadioArray[0].length > 0 || typeRadioArray[1].length > 0) type = true;
-
-        if (minInput.value) minV = true;
-        if (maxInput.value) maxV = true;
+        if (minInput.value) minV = minInput.value;
+        if (maxInput.value) maxV = maxInput.value;
         if (minV && maxV){
             if (minInput.value > maxInput.value) return alert("Minimun value cannot be lower than maximum value");
         }
 
-        if (fromDateInput.value) fDate = true;
-        if (toDateInput.value) tDate = true;
+        if (fromDateInput.value) fDate = dateTimezoneCorrection(fromDateInput.value);
+        if (toDateInput.value) tDate = dateTimezoneCorrection(toDateInput.value);
         if (fDate && tDate){
             if (fromDateInput.value > toDateInput.value) return alert("From date cannot be before To date");
         }
-
-        if (descriptionInput.value) description = true;
         
-        entryLoop : for (let entry of arrayData){
-            let entryData = entry[1];
+        if (
+            titleInput.value || 
+            currentSession.data.titleRadioSelected[0].length > 0 || 
+            currentSession.data.titleRadioSelected[1].length > 0
+        ) title = true;
+
+        if (
+            currentSession.data.typeRadioSelected[0].length > 0 || 
+            currentSession.data.typeRadioSelected[1].length > 0
+        ) type = true;
+
+        if (descriptionInput.value) description = descriptionInput.value;
+
+        if (!(title || type || minV || maxV || fDate || tDate || description)){
+            entriesTable.replaceChildren();
+            appendToTable();
+            return;
+        }
+
+        resetEntryTableCB.click();
+        
+        currentSession.data.full.forEach((row, cnt) => {
+            let entryData = row[1];
+
             if (title){
-                for (let i = 0; i < 2; i++){
-                    for (let keyString of titleRadioArray[i]){
-                        if (i == 0){
-                            if (!entryData[2].toLowerCase().includes(keyString.toLowerCase())) continue entryLoop;
-                        }
-                        else {
-                            if (entryData[2].toLowerCase().includes(keyString.toLowerCase())) continue entryLoop;
-                        }
-                    }
+                if (titleInput.value){
+                    if (!entryData[2].toLowerCase().includes(titleInput.value.toLowerCase())) return;
+                } else {
+                    if (
+                        currentSession.data.titleRadioSelected[0].length > 0 && 
+                        !currentSession.data.titleRadioSelected[0].includes(entryData[2])
+                    ) return;
+                    if (
+                        currentSession.data.titleRadioSelected[1].length > 0 && 
+                        currentSession.data.titleRadioSelected[1].includes(entryData[2])
+                    ) return;
                 }
             }
             if (type){
-                for (let i = 0; i < 2; i++){
-                    for (let keyString of typeRadioArray[i]){
-                        if (i == 0){
-                            if (!entryData[3].toLowerCase().includes(keyString.toLowerCase())) continue entryLoop;
-                        }
-                        else {
-                            if (entryData[3].toLowerCase().includes(keyString.toLowerCase())) continue entryLoop;
-                        }
-                    }
-                }
+                if (
+                    currentSession.data.typeRadioSelected[0].length > 0 && 
+                    !currentSession.data.typeRadioSelected[0].includes(entryData[3])
+                ) return;
+                if (
+                    currentSession.data.typeRadioSelected[1].length > 0 && 
+                    currentSession.data.typeRadioSelected[1].includes(entryData[3])
+                ) return;
             }
             if (minV || maxV){
                 if (minV){
-                    if(entryData[1] < Number(minInput.value)) continue entryLoop;
+                    if(entryData[1] < Number(minV)) return;
                 }
                 if (maxV){
-                    if(entryData[1] > Number(maxInput.value)) continue entryLoop;
+                    if(entryData[1] > Number(maxV)) return;
                 }
             }
             if (fDate || tDate){
                 if (fDate){
-                    let tmpDate = new Date(fromDateInput.value);
-                    tmpDate = new Date(tmpDate.getTime() + (300 * 60000));
-                    if (entryData[0] < tmpDate) continue entryLoop;
+                    if (entryData[0] < fDate) return;
                 } 
                 if (tDate){
-                    let tmpDate = new Date(toDateInput.value);
-                    tmpDate = new Date(tmpDate.getTime() + (300 * 60000));
-                    if (entryData[0] < tmpDate) continue entryLoop;
+                    if (entryData[0] > tDate) return;
                 } 
             }
             if (description){
-                if(!entryData[4].toLowerCase().includes(description.toLowerCase())) continue entryLoop;
+                if(!entryData[4].toLowerCase().includes(description.toLowerCase())) return;
             }
-            
-
-            filterResults.push(entry);
-            (entryData[1] < 0)? total["Filtered results"][1] += entryData[1] : total["Filtered results"][0] += entryData[1];
-        }
+            currentSession.data.filterResults.results.push(row.concat(cnt));
+            currentSession.addTotal("Filtered results", entryData[1]);
+        });
+        
         entriesTable.replaceChildren();
-        if (Object.keys(filterResults).length > 0){
-            sortData(filterResults);
-            appendToTable(filterResults);
-            if (!filtered){
-                let newOp = newOption("Filtered results");
-                totalSelect.appendChild(newOp);
-                filtered = true;
+        if (currentSession.data.filterResults.results.length > 0){
+            sortData(currentSession.data.filterResults.results);
+            appendToTable(currentSession.data.filterResults.results);
+            if (!currentSession.data.filterResults.filter){
+                let newOption = newOptionElement("Filtered results");
+                totalSelect.appendChild(newOption);
+                currentSession.data.filterResults.filter = true;
             }
             totalSelect.selectedIndex = totalSelect.options.length - 1;
             totalSelect.click();
+        }
+    } else {
+        if (!(titleInput.value || titleSelect.value != "-")) return alert("Title field requiered");
+        if (!(typeInput.value || typeSelect.value != "-")) return alert("Type field requiered");
+        if (!minInput.value) return alert("Amount field requiered");
+        if (!fromDateInput.value) return alert("Date field requiered");
+
+        let tmpDate = dateTimezoneCorrection(fromDateInput.value);
+        let tmpType = (typeInput.value) ? typeInput.value : typeSelect.value;
+        let tmpAmount = Number(minInput.value);
+        let tmpTitle = (titleInput.value) ? titleInput.value : titleSelect.value;
+
+        let newEntry = ["ID" + currentSession.data.full.length, [
+            tmpDate,
+            tmpAmount,
+            tmpTitle,
+            tmpType,
+            (descriptionInput.value) ? descriptionInput.value : "-"
+        ]];
+
+        currentSession.newOption(0, tmpTitle);
+        currentSession.newOption(1, tmpType);
+        
+        entriesTable.replaceChildren();
+        if (currentSession.action == 1){
+            currentSession.data.full.push(newEntry);
+            radioButChange(1);
+
+            currentSession.addTotal(tmpType, tmpAmount);
+            appendToTable();
+        } else {
+            for (let editIndex of currentSession.data.dataSelected){
+                let editType = currentSession.data.full[editIndex][1][3];
+                let editAmount = currentSession.data.full[editIndex][1][1];
+                currentSession.data.full[editIndex][1] = newEntry[1];
+                if (editType != newEntry[1][3] || editAmount != newEntry[1][1]){
+                    currentSession.addTotal(editType, editAmount, true);
+                    currentSession.addTotal(tmpType, tmpAmount);
+                }
+            }
+            radioButChange(2);
+            if (currentSession.data.filterResults.results) appendToTable(currentSession.data.filterResults.results);
+            else appendToTable();
         }
     }
 });

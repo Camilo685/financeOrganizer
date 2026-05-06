@@ -14,71 +14,89 @@
     <div class="container">
       <div class="left-side">
         <h2>Search</h2>
-        <div>
-          <input type="radio" id="searchBut" name="mode" value="search" checked>
-          <label for="searchBut">Search</label>
-          <input type="radio" id="newBut" name="mode" value="newBut">
-          <label for="newBut">New Entry</label>
-          <input type="radio" id="editBut" name="mode" value="editBut">
-          <label for="editBut">Edit</label>
-        </div>
-        <div>
-          <input type="text" id="titleInput" placeholder="Title...">
-          <table class="titleTable">
-            <thead>
-              <tr>
-                <th>Include</th>
-                <th>Title</th>
-                <th>Exclude</th>
-              </tr>
-            </thead>
-            <tbody>
-              <td></td>
-              <td><button type="button" class="titleTableB resetTableButton" disabled>Reset</button></td>
-              <td></td>
-            </tbody>
-          </table>
-        </div>
-        <div>
-          <label class="typeLabel">Type</label>
-          <select name="typeSelect" id="typeSelect">
-            <option value="-" selected>-</option>
-          </select>
-          <input type="text" id="typeInput">
-          <table class="typeTable">
-            <thead>
-              <tr>
-                <th>Include</th>
-                <th>Type</th>
-                <th>Exclude</th>
-              </tr>
-            </thead>
-            <tbody>
-              <td></td>
-              <td><button type="button" class="typeTableB resetTableButton" disabled>Reset</button></td>
-              <td></td>
-            </tbody>
-          </table>
-        </div>
-        <div>
-          <input type="number" id="minInput" placeholder="Minimum amount...">
-          <input type="number" id="maxInput" placeholder="Maximum amount...">
-        </div>
-        <div>
-          <div class="fromDateContainer">
-            <label>From</label>
-            <input type="date" id="fromDateInput">
+        <div class="radioModesDiv borderDiv">
+          <div>
+            <label for="searchBut">Search</label>
+            <input type="radio" id="searchBut" name="mode" value="search" checked>
           </div>
-          <div class="toDatecontainer">
-            <label>To</label>
-            <input type="date" id="toDateInput">
+          <div>
+            <label for="newBut">New Entry</label>
+            <input type="radio" id="newBut" name="mode" value="newBut">
+          </div>
+          <div>
+            <label for="editBut">Edit</label>
+            <input type="radio" id="editBut" name="mode" value="editBut">
           </div>
         </div>
-        <div>
-          <input type="text" id="descriptionInput" placeholder="Description...">
+        <div class="formDiv borderDiv">
+          <h3>&#127985 Title<hr/></h3>
+          <div class="titleDiv">
+            <input type="text" id="titleInput" placeholder="Title...">
+            <select name="titleSelect" class="hideInSearch" id="titleSelect">
+              <option value="-" selected>-</option>
+            </select>
+            <table class="titleTable showInSearch">
+              <thead>
+                <tr>
+                  <th>Include</th>
+                  <th>Title</th>
+                  <th>Exclude</th>
+                </tr>
+              </thead>
+              <tbody>
+                <td></td>
+                <td><button type="button" class="titleTableB resetTableButton" disabled>Reset</button></td>
+                <td></td>
+              </tbody>
+            </table>
+          </div>
+          <h3>&#127985 Type<hr/></h3>
+          <div class="typeDiv">
+            <input type="text" class="hideInSearch" id="typeInput" placeholder="Type...">
+            <select name="typeSelect" class="hideInSearch" id="typeSelect">
+              <option value="-" selected>-</option>
+            </select>
+            <table class="typeTable showInSearch">
+              <thead>
+                <tr>
+                  <th>Include</th>
+                  <th>Type</th>
+                  <th>Exclude</th>
+                </tr>
+              </thead>
+              <tbody>
+                <td></td>
+                <td><button type="button" class="typeTableB resetTableButton" disabled>Reset</button></td>
+                <td></td>
+              </tbody>
+            </table>
+          </div>
+          <h3>&#127985 Amount<hr/></h3>
+          <div class="amountDiv">
+            <input type="number" id="minInput" placeholder="Minimum amount...">
+            <input type="number" class="showInSearch" id="maxInput" placeholder="Maximum amount...">
+          </div>
+          <h3>&#127985 Date<hr/></h3>
+          <div class="dateDiv">
+            <label class="fromDateLabel showInSearch">From</label>
+            <div class="dateContainer">
+              <input type="text" id="fromDateInputText" class="dateTextInput">
+              <input type="date" id="fromDateInput" class="datePicker">
+            </div>
+            <label class="toDateLabel showInSearch">To</label>
+            <div class="dateContainer">
+              <input type="text" class="showInSearch dateTextInput" id="toDateInputText">
+              <input type="date" class="showInSearch datePicker" id="toDateInput">
+            </div>
+          </div>
+          <h3>&#127985 Other<hr/></h3>
+          <div class="othersDiv">
+            <input type="text" id="descriptionInput" placeholder="Description...">
+          </div>
+          <button type="button" class="actionBut">Search</button>
         </div>
-        <button type="button" class="actionBut">Search</button>
-        <div class="total-container">
+        <div class="totalDiv borderDiv">
+          <h3>Total</h3>
           <label>Select a type to see the total</label>
           <select name="totalSelect" id="totalSelect">
             <option value="-" selected>-</option>
@@ -96,6 +114,7 @@
         <table class="entriesTable">
           <thead>
             <tr>
+              <th><button class="resetCB" type="button" disabled>Reset</button></th>
               <th>Date</th>
               <th>Amount</th>
               <th>Title</th>

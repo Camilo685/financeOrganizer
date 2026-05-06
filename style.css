@@ -35,15 +35,16 @@ body, .container, .header, .footer {
     height: 100%;
     min-height: 80vh;
     max-height: 80vh;
+    gap: 5px;
     overflow-wrap: anywhere;
     overflow-y: auto;
-    gap: 5px;
 }
 
 .left-side {
     width: 30%;
     min-width: 30vw;
     background-color: lightblue;
+    align-items: center;
 }
 
 .rigth-side {
@@ -52,19 +53,75 @@ body, .container, .header, .footer {
     background-color: lightcyan;
 }
 
-.total-container {
-    display: flex;
-    flex-direction: column;
-}
-
 h1, h2 {
     text-align: center;
 }
 
 table, th, td {
     border: 1px solid black;
-    border-collapse: collapse;
     background-color: white;
-    overflow-wrap: anywhere;
-    overflow-y: auto;
+}
+
+table {
+    border-collapse: collapse;
+}
+
+.entriesTable {
+    width: 100%;
+}
+
+hr {
+    margin-top: 0em;
+    margin-bottom: 0em;
+}
+
+.borderDiv {
+    border-style: solid;
+    border-width: 0.5px;
+    width: 95%;
+    display: flex;
+}
+
+.radioModesDiv {
+    justify-content: space-around;
+}
+
+.formDiv, .totalDiv{
+    flex-direction: column;
+    align-items: center;
+    padding-bottom: 10px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+.titleDiv, .typeDiv, .amountDiv, .dateDiv, .othersDiv {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.actionBut, h3 {
+    margin-top: 10px;
+}
+
+.totalDiv *, .actionBut, h3, .titleDiv, .typeDiv, .amountDiv, .dateDiv, .othersDiv, .fromDateContainer *, .toDateContainer * {
+    width: 90%;
+}
+
+h3 {
+    margin-bottom: 10px;
+    text-align: left;
+}
+
+.dateContainer {
+    display: grid;
+}
+
+.dateContainer * {
+    grid-column-start: 1;
+    grid-row-start: 1;
+}
+
+.datePicker {
+    z-index: -1;
 }
